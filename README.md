@@ -70,8 +70,159 @@ Multiplication Result Matrix 4x6:
 7    9    7    6    8    9
 
 ```	
-<br>b. Selanjutnya, 
-  
+<br>b. Selanjutnya, dengan menggunakan hasil dari program sebelumnya kita ditugaskan untuk menghitung perkalian faktorial tiap cell di matrix. Setelah memasukkan matrix B, kita harus memperhatikan syarat yang telah dikasih pada soal. Lalu, kita akan membandingkan setiap cell pada matrix A dan B sesuai syaratnya. Terakhir, kita menghasilkan matrix dari perkalian faktorial matrix A dan B.
+<br>Program akan menjadi berikut :
+	
+```	
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#define x 4
+#define z 6
+
+pthread_t tid[x*z];
+pthread_attr_t attr;
+int iret[x*z];
+key_t key = 12345;
+int *matrix;
+int cnt=0;
+int matrixA[x][z];
+int matrixB[x][z];
+int total=x*z;
+
+void *faktorial(void *arguments);
+
+struct arg_struct{
+    	int arg1;
+    	int arg2;
+};
+
+void assign_matrixA(){
+    	cnt=0;
+    	for(int i=0; i<x; i++){
+        	for(int j=0; j<z; j++){
+            		matrixA[i][j] = matrix[cnt];
+            		cnt++;
+        	}
+    	}
+}
+
+void call_thread(){
+    	for(int i=1; i<x+1; i++){
+        	for(int j=1; j<z+1; j++){
+            		struct arg_struct *args = (struct arg_struct *) malloc(sizeof(struct arg_struct));
+            		args->arg1 = i-1;
+            		args->arg2 = j-1;
+            		pthread_attr_init(&attr);
+            		iret[cnt] = pthread_create(&tid[cnt], &attr, faktorial, args);
+            		if(iret[cnt]){
+                		fprintf(stderr,"Error - pthread_create() return code: %d\n", iret[cnt]);
+                		exit(EXIT_FAILURE);
+            		}
+            		pthread_join(tid[cnt], NULL);
+            		cnt++;
+        	}
+        	printf("\n");
+    	}
+
+    	for(int i=0; i<total; i++){
+        	pthread_join(tid[i], NULL);
+    	}
+}
+
+int main(void){
+    	int shmid = shmget(key, sizeof(matrix), IPC_CREAT | 0666);
+    	matrix = shmat(shmid, 0, 0);
+
+    	assign_matrixA();
+    	cnt=0;
+    	//input matrixB
+	    printf("Enter Matrix B 4x6 :\n");
+    	for (int i = 0; i < x; i++) {
+      		for (int j = 0; j < z; j++) {
+         		scanf("%d", &matrixB[i][j]);
+      		}
+   	  }  
+	    printf("Matrix Result 4x6 :\n");
+    	call_thread();
+
+    	shmdt(matrix);
+    	shmctl(shmid, IPC_RMID, NULL);
+
+    	return 0;
+}
+
+void *faktorial(void *arguments){
+        struct arg_struct *args = arguments;
+
+        int baris=args->arg1;
+        int kolom=args->arg2;
+        long long int hasil=1;
+
+        if (matrixA[baris][kolom] == 0 || matrixB[baris][kolom] == 0){
+                printf("0");
+        }
+        else if(matrixA[baris][kolom]>matrixB[baris][kolom]){
+        //a!/(a-b)!
+                int batas = matrixA[baris][kolom] - matrixB[baris][kolom];
+                for (int i = matrixA[baris][kolom]; i > batas; i--){
+                        hasil = hasil*i;
+                }
+                printf("%lld", hasil);
+
+        }
+        else if(matrixB[baris][kolom]>matrixA[baris][kolom]){
+        //a!
+                for (int i = matrixA[baris][kolom]; i > 0; i--){
+                        hasil = hasil * matrixA[baris][kolom];
+                        matrixA[baris][kolom]--;
+                }
+                printf("%lld", hasil);
+        }
+        printf("\t\t");
+        pthread_exit(0);
+}
+```
+<br>Hasil Program :
+	
+```	
+Enter Matrix B 4x6 :
+14 2 3 8 8 10
+7 4 8 5 14 9
+9 2 13 5 11 2
+8 7 10 4 10 8
+Matrix Result 4x6 :
+6227020800   	 132   	 3360   	 19958400   		 158789030400   	 
+40320   	 3024   	 1814400   	 2520   	 720   	 19958400   	 
+79833600   	 182   	 482718652416000   	 30240   	 24306   	 
+5040   	 181440   	 5040   	 360   	 40320   	 362880	  
+```
+<br>c. Untuk bagian c, untuk menghindar terjadinya lag kita ditugaskan untuk mengecek 5 proses teratas yang memakan resource komputernya dengan command ```ps aux | sort -nrk 3,3 | head -5```. Dengan menggunakan IPC Pipes program akan menjadi berikut :
+
+```	
+Enter Matrix B 4x6 :
+14 2 3 8 8 10
+7 4 8 5 14 9
+9 2 13 5 11 2
+8 7 10 4 10 8
+Matrix Result 4x6 :
+6227020800   	 132   	 3360   	 19958400   		 158789030400   	 
+40320   	 3024   	 1814400   	 2520   	 720   	 19958400   	 
+79833600   	 182   	 482718652416000   	 30240   	 24306   	 
+5040   	 181440   	 5040   	 360   	 40320   	 362880	  
+```
+<br>Hasil Program :
+	
+```	
+tristan 	2244  1.9 15.1 2818540 307560 ?  	Sl   20:47   0:26 /usr/lib/firefox/firefox -contentproc -childID 5 -isForBrowser -prefsLen 7375 -prefMapSize 233599 -parentBuildID 20210318103112 -appdir /usr/lib/firefox/browser 1658 true tab
+tristan 	1658  1.3 14.0 3296812 285216 ?  	Sl   19:54   1:02 /usr/lib/firefox/firefox -new-window
+tristan 	1061  0.9 16.7 3442508 340260 ?  	Rsl  19:40   0:49 /usr/bin/gnome-shell
+tristan 	1828  0.8  8.6 2592052 176868 ?  	Sl   19:54   0:38 /usr/lib/firefox/firefox -contentproc -childID 4 -isForBrowser -prefsLen 6249 -prefMapSize 233599 -parentBuildID 20210318103112 -appdir /usr/lib/firefox/browser 1658 true tab
+tristan 	1774  0.7 16.4 2986028 335088 ?  	Sl   19:54   0:35 /usr/lib/firefox/firefox -contentproc -childID 2 -isForBrowser -prefsLen 177 -prefMapSize 233599 -parentBuildID 20210318103112 -appdir /usr/lib/firefox/browser 1658 true tab
+```
 ## Soal 3
 <br>Seorang mahasiswa bernama Alex sedang mengalami masa gabut. Di saat masa gabutnya, ia memikirkan untuk merapikan sejumlah file yang ada di laptopnya. Karena jumlah filenya terlalu banyak, Alex meminta saran ke Ayub. Ayub menyarankan untuk membuat sebuah program C agar file-file dapat dikategorikan. Program ini akan memindahkan file sesuai ekstensinya ke dalam folder sesuai ekstensinya yang folder hasilnya terdapat di working directory ketika program kategori tersebut dijalankan.
 <li>a. Program menerima opsi -f seperti contoh di atas, jadi pengguna bisa menambahkan argumen file yang bisa dikategorikan sebanyak yang diinginkan oleh pengguna. 
