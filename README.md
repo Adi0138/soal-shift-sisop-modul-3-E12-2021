@@ -4,7 +4,90 @@ Kelompok E12 :
 <li>05111840000138 - Gema Adi Perwira
 <li>05111940000006 - Daffa Tristan Firdaus
 <li>05111940000211 - VICKY THIRDIAN
-  
+
+## Soal 1
+<br>Keverk adalah orang yang cukup ambisius dan terkenal di angkatannya. Sebelum dia menjadi ketua departemen di HMTC, dia pernah mengerjakan suatu proyek dimana keverk tersebut meminta untuk membuat server database buku. Proyek ini diminta agar dapat digunakan oleh pemilik aplikasi dan diharapkan bantuannya dari pengguna aplikasi ini. Di dalam proyek itu, Keverk diminta:
+<li>a. Secara garis besar, bagian ini diperintahkan untuk pada saat client sudah tersambung dengan server dapat melakukan 2 pilihan antara register dan login. Jika memilih login maka user akan mengisikan ID serta passwordnya yang akan dikirimkan ke server. Apabila memilih login maka user akan diminta untuk memasukkan ID dan passwordnya lalu server akan mengecek apakah akun tersebut yang berisikan ID dan password itu sudah ada atau belum di dalam server tersebut. Semua akun yang terdaftar akan tersimpan di akun.txt dengan format : 
+```id:password```
+Pertama-tama kita harus menghubungkan koneksi socket terlebih dahulu dari client dan server dengan potongan code seperti ini:
+##Server
+```c
+int createSocket() {
+    struct sockaddr_in serv_addr;
+    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP), return_val;
+
+    if (fd == -1) {
+        printf("\n Socket creation failed. \n");
+		return -1;
+    }
+    printf("Socket creation success with fd: %d\n", fd);
+
+    serv_addr.sin_family = AF_INET;         
+    serv_addr.sin_port = htons(8080);     
+    serv_addr.sin_addr.s_addr = INADDR_ANY; 
+
+	return_val = bind(fd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr_in));
+    if (return_val != 0) {
+       	fprintf(stderr, "Binding failed [%s]\n", strerror(errno));
+        close(fd); return -1;
+    }
+    
+	return_val = listen(fd, 5);
+    if (return_val != 0) {
+        fprintf(stderr, "Listen failed [%s]\n", strerror(errno));
+        close(fd); return -1;
+    }
+    return fd;
+}
+```
+  Lalu untuk membuat direktori FILES, files.tsv, akun.txt, running.log. Maka program akan mengecek terlebih dahulu jika belum ada nantinya akan di create saat program dijalankan
+##Server
+```c
+void checkFile() {
+    if(access("akun.txt", F_OK)) {
+		FILE *file = fopen("akun.txt", "w+");
+		fclose(file);
+	} 
+    if(access("files.tsv", F_OK)) {
+		FILE *file = fopen("files.tsv", "w+");
+        fprintf(file, "Publisher\tTahun Publikasi\tFilepath\n");
+		fclose(file);
+	}
+	if(access("running.log", F_OK )) {
+		FILE *file = fopen("running.log", "w+");
+		fclose(file);
+	}
+
+    struct stat s;
+    stat("./FILES", &s);
+
+    if(!S_ISDIR(s.st_mode)) mkdir("./FILES", 0777);
+}
+```
+##Client
+```c
+int account_check(int fd, char command[]){
+    int return_val;
+	char id[100], password[100], pesan[100];
+	
+    printf("Enter ID: "); scanf("%s", id);
+    return_val = send(fd, id, sizeof(id), 0);
+    printf("Enter Password: "); scanf("%s", password);
+    return_val = send(fd, password, sizeof(password), 0);
+    return_val = recv(fd, pesan, 100, 0);
+
+    if(!strcmp(pesan, "account_get")) return 1;
+    else if(!strcmp(pesan, "user_exists")) {
+    	printf("\e[31mID already exists.\e[0m\n");
+        return 0;
+    }
+    else if(!strcmp(pesan, "wrong_account")) {
+    	printf("\e[31mID or password is incorrect.\e[0m\n");
+        return 0;
+    }
+}
+```	
+	
 ## Soal 2
 <br>Crypto (kamu) adalah teman Loba. Suatu pagi, Crypto melihat Loba yang sedang kewalahan mengerjakan tugas dari bosnya. Karena Crypto adalah orang yang sangat menyukai tantangan, dia ingin membantu Loba mengerjakan tugasnya. Detil dari tugas tersebut adalah:
 <li>a.  Membuat program perkalian matrix (4x3 dengan 3x6) dan menampilkan hasilnya. Matriks nantinya akan berisi angka 1-20 (tidak perlu dibuat filter angka).
