@@ -203,16 +203,82 @@ Matrix Result 4x6 :
 <br>c. Untuk bagian c, untuk menghindar terjadinya lag kita ditugaskan untuk mengecek 5 proses teratas yang memakan resource komputernya dengan command ```ps aux | sort -nrk 3,3 | head -5```. Dengan menggunakan IPC Pipes program akan menjadi berikut :
 
 ```	
-Enter Matrix B 4x6 :
-14 2 3 8 8 10
-7 4 8 5 14 9
-9 2 13 5 11 2
-8 7 10 4 10 8
-Matrix Result 4x6 :
-6227020800   	 132   	 3360   	 19958400   		 158789030400   	 
-40320   	 3024   	 1814400   	 2520   	 720   	 19958400   	 
-79833600   	 182   	 482718652416000   	 30240   	 24306   	 
-5040   	 181440   	 5040   	 360   	 40320   	 362880	  
+#include<stdio.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+#include<string.h>
+#include<stdlib.h>
+
+int main() {
+    	int pipe1[2], pipe2[2];
+    	pid_t pid;
+
+    	if(pipe(pipe1) == -1) {
+        	fprintf(stderr, "Pipe failed");
+        	return 1;
+    	}
+    	if(pipe(pipe2) == -1) {
+        	fprintf(stderr, "Pipe failed");
+        	return 1;
+    	}
+
+    	pid = fork();
+    	if(pid < 0) {
+        	fprintf(stderr, "fork failed");
+        	return 1;
+    	} 
+	    else if(pid == 0) {
+        	dup2(pipe1[1], 1);
+
+        	close(pipe1[0]);
+        	close(pipe1[1]);
+
+        	char *argv[] = {"ps", "aux", NULL};
+        	execv("/usr/bin/ps", argv);
+
+        	perror("Bad exec ps");
+        	_exit(1);
+    	} 
+	    else {
+        	pid = fork();
+        	if(pid < 0) {
+            		fprintf(stderr, "fork failed");
+            		return 1;
+        	} 
+		      else if(pid == 0) {
+			          dup2(pipe1[0], 0);
+
+            		dup2(pipe2[1], 1);
+
+            		close(pipe1[0]);
+            		close(pipe1[1]);
+            		close(pipe2[0]);
+            		close(pipe2[1]);
+
+            		char *argv[] = {"sort", "-nrk", "3,3", NULL};
+            		execv("/usr/bin/sort", argv);
+
+            		perror("Bad exec sort");
+            		_exit(1);
+        	}		 
+		      else { 
+            		close(pipe1[0]);
+            		close(pipe1[1]);
+
+            		dup2(pipe2[0], 0);
+
+            		close(pipe2[0]);
+            		close(pipe2[1]);
+
+            		char *argv[] = {"head", "-5", NULL};
+            		execv("/usr/bin/head", argv);
+
+            		perror("Bad exec head");
+            		_exit(1);
+        	}
+    	}
+}  
 ```
 <br>Hasil Program :
 	
