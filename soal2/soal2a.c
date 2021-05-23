@@ -57,9 +57,9 @@ int main(void) {
     	int shmid = shmget(key, sizeof(int[4][6]), IPC_CREAT | 0666);
     	value = shmat(shmid, NULL, 0);
 
-	printf("Enter Matrix 4x3 ;\n");
+	printf("Enter Matrix 4x3 :\n");
     	inputMatriksA();
-	printf("Enter Matrix 3x6 ;\n");
+	printf("Enter Matrix 3x6 :\n");
     	inputMatriksB();
 
     	pthread_t tid[4];
