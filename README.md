@@ -21,7 +21,27 @@ If 0 -> 0
 <li>c.  Karena takut lag dalam pengerjaannya membantu Loba, Crypto juga membuat program (soal2c.c) untuk mengecek 5 proses teratas apa saja yang memakan resource komputernya dengan command “ps aux | sort -nrk 3,3 | head -5” (Catatan!: Harus menggunakan IPC Pipes)
 
 ## Jawaban Soal 2
+<br>a. Pada bagian ini kita ditugaskan untuk membuat program yang dapat menghitung perkalian antara matrix 4x3 dan 3x6. Dengan begitu, akan menghasilkan matrix yang berukuran 4x6. Tetapi, pengerjaan soal bagian ini akan dikaitkan dengan soal nomor 2 bagian b sehingga kita akan menggunakan shared memory yang dapat memungkinkan kita menggunakan hasil program ini untuk dipakai pada program lain. Lalu, dengan melakukan perkalian matrix seperti biasa akan menghasilkan program yang jika dijalankan akan seperti berikut:
+	
+```
+Enter Matrix 4x3 :
+4 1 4
+2 1 3
+4 2 2
+1 1 4
+Enter Matrix 3x6 :
+2 1 3 2 0 3
+1 4 4 0 0 2
+1 1 0 1 2 1
 
+Multiplication Result Matrix 4x6:
+13    12    16    12    8    18    
+8    9    10    7    6    11    
+12    14    20    10    4    18    
+7    9    7    6    8    9
+
+```	
+<br>b. Selanjutnya, 
   
 ## Soal 3
 <br>Seorang mahasiswa bernama Alex sedang mengalami masa gabut. Di saat masa gabutnya, ia memikirkan untuk merapikan sejumlah file yang ada di laptopnya. Karena jumlah filenya terlalu banyak, Alex meminta saran ke Ayub. Ayub menyarankan untuk membuat sebuah program C agar file-file dapat dikategorikan. Program ini akan memindahkan file sesuai ekstensinya ke dalam folder sesuai ekstensinya yang folder hasilnya terdapat di working directory ketika program kategori tersebut dijalankan.
