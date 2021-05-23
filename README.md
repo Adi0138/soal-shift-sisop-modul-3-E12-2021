@@ -22,7 +22,7 @@ If 0 -> 0
 ## Jawaban Soal 2
 <br>a. Pada bagian ini kita ditugaskan untuk membuat program yang dapat menghitung perkalian antara matrix 4x3 dan 3x6. Dengan begitu, akan menghasilkan matrix yang berukuran 4x6. Tetapi, pengerjaan soal bagian ini akan dikaitkan dengan soal nomor 2 bagian b sehingga kita akan menggunakan shared memory yang dapat memungkinkan kita menggunakan hasil program ini untuk dipakai pada program lain. Sehingga fungsi main menjadi seperti berikut:
 
-```
+```c
 int main(void) {
 
     	key_t key = 12345;
@@ -72,7 +72,7 @@ Multiplication Result Matrix 4x6:
 <br>b. Selanjutnya, dengan menggunakan hasil dari program sebelumnya kita ditugaskan untuk menghitung perkalian faktorial tiap cell di matrix. Setelah memasukkan matrix B, kita harus memperhatikan syarat yang telah dikasih pada soal. Lalu, kita akan membandingkan setiap cell pada matrix A dan B sesuai syaratnya. Terakhir, kita menghasilkan matrix dari perkalian faktorial matrix A dan B.
 <br>Program akan menjadi berikut :
 	
-```	
+```c
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -201,7 +201,7 @@ Matrix Result 4x6 :
 ```
 <br>c. Untuk bagian c, untuk menghindar terjadinya lag kita ditugaskan untuk mengecek 5 proses teratas yang memakan resource komputernya dengan command ```ps aux | sort -nrk 3,3 | head -5```. Dengan menggunakan IPC Pipes program akan menjadi berikut :
 
-```	
+```c	
 #include<stdio.h>
 #include<unistd.h>
 #include<sys/types.h>
