@@ -5,7 +5,265 @@ Kelompok E12 :
 <li>05111940000006 - Daffa Tristan Firdaus
 <li>05111940000211 - VICKY THIRDIAN
 
+## Soal 1
+<br>Keverk adalah orang yang cukup ambisius dan terkenal di angkatannya. Sebelum dia menjadi ketua departemen di HMTC, dia pernah mengerjakan suatu proyek dimana keverk tersebut meminta untuk membuat server database buku. Proyek ini diminta agar dapat digunakan oleh pemilik aplikasi dan diharapkan bantuannya dari pengguna aplikasi ini. Di dalam proyek itu, Keverk diminta:
+(Sebelumnya pengerjaan soal ini dilakukan menggunakan wsl)
+<li>Secara garis besar, bagian ini diperintahkan untuk pada saat client sudah tersambung dengan server dapat melakukan 2 pilihan antara register dan login. Jika memilih login maka user akan mengisikan ID serta passwordnya yang akan dikirimkan ke server. Apabila memilih login maka user akan diminta untuk memasukkan ID dan passwordnya lalu server akan mengecek apakah akun tersebut yang berisikan ID dan password itu sudah ada atau belum di dalam server tersebut.
+	
+Pertama-tama kita harus menghubungkan koneksi socket terlebih dahulu dari client dan server dengan potongan code seperti ini:
+## Server
+```c
+int createSocket() {
+    struct sockaddr_in serv_addr;
+    int fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP), return_val;
 
+    if (fd == -1) {
+        printf("\n Socket creation failed. \n");
+		return -1;
+    }
+    printf("Socket creation success with fd: %d\n", fd);
+
+    serv_addr.sin_family = AF_INET;         
+    serv_addr.sin_port = htons(8080);     
+    serv_addr.sin_addr.s_addr = INADDR_ANY; 
+
+	return_val = bind(fd, (struct sockaddr *)&serv_addr, sizeof(struct sockaddr_in));
+    if (return_val != 0) {
+       	fprintf(stderr, "Binding failed [%s]\n", strerror(errno));
+        close(fd); return -1;
+    }
+    
+	return_val = listen(fd, 5);
+    if (return_val != 0) {
+        fprintf(stderr, "Listen failed [%s]\n", strerror(errno));
+        close(fd); return -1;
+    }
+    return fd;
+}
+```
+  Lalu untuk membuat direktori FILES, files.tsv, akun.txt, running.log. Maka program akan mengecek terlebih dahulu jika belum ada nantinya akan di create saat program dijalankan
+```c
+void checkFile() {
+    if(access("akun.txt", F_OK)) {
+		FILE *file = fopen("akun.txt", "w+");
+		fclose(file);
+	} 
+    if(access("files.tsv", F_OK)) {
+		FILE *file = fopen("files.tsv", "w+");
+        fprintf(file, "Publisher\tTahun Publikasi\tFilepath\n");
+		fclose(file);
+	}
+	if(access("running.log", F_OK )) {
+		FILE *file = fopen("running.log", "w+");
+		fclose(file);
+	}
+
+    struct stat s;
+    stat("./FILES", &s);
+
+    if(!S_ISDIR(s.st_mode)) mkdir("./FILES", 0777);
+}
+```
+## Client
+```c
+int account_check(int fd, char command[]){
+    int return_val;
+	char id[100], password[100], pesan[100];
+	
+    printf("Enter ID: "); scanf("%s", id);
+    return_val = send(fd, id, sizeof(id), 0);
+    printf("Enter Password: "); scanf("%s", password);
+    return_val = send(fd, password, sizeof(password), 0);
+    return_val = recv(fd, pesan, 100, 0);
+
+    if(!strcmp(pesan, "account_get")) return 1;
+    else if(!strcmp(pesan, "user_exists")) {
+    	printf("\e[31mID already exists.\e[0m\n");
+        return 0;
+    }
+    else if(!strcmp(pesan, "wrong_account")) {
+    	printf("\e[31mID or password is incorrect.\e[0m\n");
+        return 0;
+    }
+}
+```
+Maka program akan berjalan seperti ini
+	![image](https://user-images.githubusercontent.com/54606856/119263505-89f20800-bc09-11eb-8050-d57ef4c9ae98.png)
+	
+<li>Lalu dalam menambahkan fitur command baru seperti add, download, delete, see, find. Maka dibuat fungsi-fungsi tiap commandnya seperti ini
+	
+```c  
+void addFeature(int client, char userdata[128]) {
+    char fname[100], publisher[100], tahun[10], fp[100], message[100], fullpath[256], file_data[4096];
+    int return_publisher, return_tahun, return_filepath, return_stat, return_receive;
+    return_publisher = recv(client, publisher, sizeof(publisher), 0);
+    return_tahun = recv(client, tahun, sizeof(tahun), 0);
+    return_filepath = recv(client, fp, sizeof(fp), 0);
+
+    get_file_name(fp, fname);
+    sprintf(fullpath, "%s%s", S_PATH, fname);
+    
+    printf("%s, %s, %s\n", publisher, tahun, fullpath);
+
+    FILE *files_tsv = fopen("files.tsv", "a");
+    fclose(files_tsv);
+
+    FILE *file = fopen(fullpath, "w+");
+    while(1) {
+        return_receive = recv(client, file_data, 4096, 0);
+    	fflush(stdout);
+        if(return_receive != -1){
+            if(!strcmp(file_data, "OK")) break;
+		}            
+        fprintf(file, "%s", file_data);
+        bzero(file_data, 4096);
+    }
+    fclose(file);
+
+    FILE *log = fopen("running.log", "a");
+    fprintf(log, "Tambah : %s (%s)\n", fname, userdata);
+    fclose(log);
+    fflush(stdout);
+}
+	void downloadFeature(int client) {
+    char fpath[512];
+    char fname[256];
+
+    int return_fn = recv(client, fname, sizeof(fname), 0);
+
+	sprintf(fpath, "%s%s", S_PATH, fname);
+    printf("%s\n", fpath);
+
+    if(find_file(fname)) {
+        FILE *book = fopen(fpath, "r");
+        char file_data[4096] = {0};
+
+        while(fgets(file_data, 4096, book) != NULL) {
+            if(send(client, file_data, sizeof(file_data), 0) != -1)  bzero(file_data, 4096);
+        }
+        fclose(book);
+        printf("\e[32mFile sent successfully.\e[0m\n");
+        send(client, "OK", 4096, 0);
+    }
+	else send(client, "404", 4096, 0);
+}
+
+void deleteFeature(int client, char userdata[128]) {
+    char filename[128], new_path[256], old_path[256];
+    int return_client= recv(client, filename, sizeof(filename), 0), isFound=0;
+    
+    find_in_tsv(&isFound, filename);
+    if(isFound) {
+        return_client = send(client, "OK", 100, 0);
+        sprintf(new_path, "%sold-%s", S_PATH, filename);
+        sprintf(old_path, "%s%s", S_PATH, filename);
+        rename(old_path, new_path);
+
+	    FILE *log = fopen("running.log", "a");
+	    fprintf(log, "Hapus : %s (%s)\n", filename, userdata);
+	    fclose(log);
+    } else return_client = send(client, "404", 100, 0);
+}
+
+void seeFeature(int client) {
+    FILE *tsv_file = fopen("files.tsv", "r");
+    char file_data[1024], file[100], filename[64], publisher[64], tahun[64], ext[64], filepath[256],
+		filename_send[1024], publisher_send[1024], tahun_send[1024], ext_send[1024], filepath_send[1024], *p;
+    int i=0, ret_c;
+    
+    while(fgets(file_data, 1024, tsv_file) != NULL) {
+        if(i != 0) {
+            strcpy(publisher, strtok_r(file_data, "\t", &p));
+            strcpy(tahun, strtok_r(NULL, "\t", &p));
+            strcpy(filepath, strtok_r(NULL, "\t", &p));
+            filepath[strlen(filepath)-1] = '\0';
+            sprintf(filepath_send, "Filepath: %s\n\n", filepath);
+
+            get_file_name(filepath, file);
+
+            strcpy(filename, strtok_r(file, ".", &p));
+            strcpy(ext, strtok_r(NULL, ".", &p));
+
+            sprintf(filename_send, "Nama: %s\n", filename);
+            sprintf(publisher_send, "Publisher : %s\n", publisher);
+            sprintf(tahun_send, "Tahun publishing: %s\n", tahun);
+            sprintf(ext_send, "Ekstensi File: %s\n", ext);
+			
+			send(client, "next", 1024, 0);
+            send(client, filename_send, 1024, 0);
+            send(client, publisher_send, 1024, 0);
+            send(client, tahun_send, 1024, 0);
+            send(client, ext_send, 1024, 0);
+            send(client, filepath_send, 1024, 0);
+            printf("%s\n%s\n%s\n%s\n%s\n", filename, publisher, tahun, ext, filepath);
+            sleep(1);
+        }
+        i++;
+        bzero(file_data, sizeof(file_data));
+    }
+    fclose(tsv_file);
+	ret_c = send(client, "OK", 1024, 0);
+	fflush(stdout);
+}
+
+void findFeature(int client) {
+    FILE *tsv_file = fopen("files.tsv", "r");
+    char query[1024], file_data[1024], file[100], filename[64], publisher[64], tahun[64], ext[64], filepath[256],
+		filename_send[1024], publisher_send[1024], tahun_send[1024], ext_send[1024], filepath_send[1024], *p;
+    int i=0, ret_c;
+    
+    ret_c = recv(client, query, 1024, 0);
+    
+    while(fgets(file_data, 1024, tsv_file) != NULL) {
+        if(i != 0) {
+            strcpy(publisher, strtok_r(file_data, "\t", &p));
+            strcpy(tahun, strtok_r(NULL, "\t", &p));
+            strcpy(filepath, strtok_r(NULL, "\t", &p));
+            filepath[strlen(filepath)-1] = '\0';
+            sprintf(filepath_send, "Filepath: %s\n\n", filepath);
+
+            get_file_name(filepath, file);
+
+            strcpy(filename, strtok_r(file, ".", &p));
+            strcpy(ext, strtok_r(NULL, ".", &p));
+            
+			if(strstr(file, query)) {
+	            sprintf(filename_send, "Nama: %s\n", filename);
+	            sprintf(publisher_send, "Publisher : %s\n", publisher);
+	            sprintf(tahun_send, "Tahun publishing: %s\n", tahun);
+	            sprintf(ext_send, "Ekstensi File: %s\n", ext);
+				
+				send(client, "next", 1024, 0);
+	            send(client, filename_send, 1024, 0);
+	            send(client, publisher_send, 1024, 0);
+	            send(client, tahun_send, 1024, 0);
+	            send(client, ext_send, 1024, 0);
+	            send(client, filepath_send, 1024, 0);
+	            printf("%s\n%s\n%s\n%s\n%s\n", filename, publisher, tahun, ext, filepath);
+	            sleep(1);
+	    	}
+        }
+        i++;
+        bzero(file_data, sizeof(file_data));
+    }
+    fclose(tsv_file);
+	ret_c = send(client, "OK", 1024, 0);
+	fflush(stdout);
+}
+```  
+Jika command add digunakan maka program akan berjalan seperti ini
+	![image](https://user-images.githubusercontent.com/54606856/119264355-063a1a80-bc0d-11eb-87ed-7f58e7d26ab1.png)
+
+Jika command delete digunakan maka program akan berjalan seperti ini	
+	![tes](https://user-images.githubusercontent.com/54606856/119264500-adb74d00-bc0d-11eb-990d-1024c7003c94.jpg)
+	
+Jika command see digunakan maka program akan berjalan seperti ini
+	![see](https://user-images.githubusercontent.com/54606856/119264579-00910480-bc0e-11eb-9c6f-dc786f237925.jpg)
+
+Jika command find digunakan maka program akan berjalan seperti ini
+	![find](https://user-images.githubusercontent.com/54606856/119264676-59609d00-bc0e-11eb-8472-7f4045f2566f.jpg)
+
+Namun pada program ini masih terdapat kesalahan pada lognya yang tidak dapat menampilkan user yang melakukan command
 	
 ## Soal 2
 <br>Crypto (kamu) adalah teman Loba. Suatu pagi, Crypto melihat Loba yang sedang kewalahan mengerjakan tugas dari bosnya. Karena Crypto adalah orang yang sangat menyukai tantangan, dia ingin membantu Loba mengerjakan tugasnya. Detil dari tugas tersebut adalah:
